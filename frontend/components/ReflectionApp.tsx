@@ -11,11 +11,15 @@ import "../styles/App.css";
 export const ReflectionApp: React.FC = () => {
   const [mounted, setMounted] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const { isConnected } = useAccount();
   const { fheLoading, contractAddress, isDeployed } = useReflectionContract();
 
   useEffect(() => {
     setMounted(true);
+    // Simulate loading for better UX
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Callback to trigger list refresh after successful submission
@@ -23,7 +27,7 @@ export const ReflectionApp: React.FC = () => {
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
-  if (!mounted) {
+  if (!mounted || isLoading) {
     return (
       <div className="app-container">
         <div className="flex items-center justify-center min-h-screen">

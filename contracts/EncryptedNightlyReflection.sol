@@ -31,6 +31,7 @@ contract EncryptedNightlyReflection is SepoliaConfig {
     /// @notice Events
     event ReflectionEntryAdded(uint256 indexed entryId, address indexed owner, uint256 timestamp);
     event AccessGranted(uint256 indexed entryId, address indexed user);
+    event ReflectionEntryUpdated(uint256 indexed entryId, address indexed owner, uint256 timestamp);
 
     /// @notice Initialize the contract
     constructor() {

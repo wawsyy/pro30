@@ -17,8 +17,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({ onEntryAdded }) 
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [characterCount, setCharacterCount] = useState(0);
   const { address } = useAccount();
   const { addReflection, fheLoading, fhevmReady, fhevmStatus, fhevmError } = useReflectionContract();
+
+  const handleContentChange = (value: string) => {
+    setContent(value);
+    setCharacterCount(value.length);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +33,11 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({ onEntryAdded }) 
 
     if (!content.trim()) {
       setErrorMessage("Please enter your reflection content");
+      return;
+    }
+
+    if (content.length > 1000) {
+      setErrorMessage("Reflection content must be less than 1000 characters");
       return;
     }
 
@@ -145,9 +156,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({ onEntryAdded }) 
             className="reflection-form-textarea"
             placeholder="Write your nightly reflection here... What were your thoughts today?"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => handleContentChange(e.target.value)}
             disabled={isLoading}
+            maxLength={1000}
           />
+          <div className="text-xs text-gray-400 mt-1 text-right">
+            {characterCount}/1000 characters
+          </div>
         </div>
 
         <div className="reflection-form-group">

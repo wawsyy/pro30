@@ -25,6 +25,7 @@ export const ReflectionList: React.FC<ReflectionListProps> = ({ refreshTrigger =
   const [entries, setEntries] = useState<ReflectionEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [decryptingId, setDecryptingId] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   const loadEntries = React.useCallback(async () => {
     if (!address) {
@@ -60,7 +61,17 @@ export const ReflectionList: React.FC<ReflectionListProps> = ({ refreshTrigger =
       }
 
       console.log("[ReflectionList] Setting entries:", entriesData);
-      setEntries(entriesData);
+
+      // Sort entries based on selected criteria
+      const sortedEntries = [...entriesData].sort((a, b) => {
+        if (sortBy === 'newest') {
+          return b.timestamp - a.timestamp;
+        } else {
+          return a.timestamp - b.timestamp;
+        }
+      });
+
+      setEntries(sortedEntries);
     } catch (error: any) {
       // Only log real errors, ignore network errors from external services
       const errorMsg = error?.message?.toLowerCase() || String(error).toLowerCase();
@@ -126,7 +137,20 @@ export const ReflectionList: React.FC<ReflectionListProps> = ({ refreshTrigger =
 
   return (
     <div className="reflection-list">
-      <h2 className="reflection-list-title">My Reflections</h2>
+      <div className="reflection-list-header">
+        <h2 className="reflection-list-title">My Reflections</h2>
+        <div className="reflection-sort-controls">
+          <label className="text-sm text-gray-600 mr-2">Sort by:</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
+            className="text-sm bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+      </div>
       <div className="reflection-entries">
         {entries.map((entry) => (
           <div key={entry.id} className="reflection-entry">

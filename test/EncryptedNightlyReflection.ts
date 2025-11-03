@@ -276,5 +276,65 @@ describe("EncryptedNightlyReflection", function () {
     expect(userEntries[0]).to.eq(1);
     expect(userEntries[1]).to.eq(2);
   });
+
+  it("should handle edge cases and validation", async function () {
+    // Test entry existence check
+    const nonExistentEntryExists = await reflectionContract.entryExists(999);
+    expect(nonExistentEntryExists).to.be.false;
+
+    // Test getting entry by index bounds
+    const userEntryCount = await reflectionContract.getUserEntryCount(signers.alice.address);
+    expect(userEntryCount).to.eq(0); // No entries for alice in this test
+
+    // Test zero address edge case (should return 0)
+    const zeroAddressCount = await reflectionContract.getUserEntryCount(ethers.ZeroAddress);
+    expect(zeroAddressCount).to.eq(0);
+  });
+
+  it("should properly track timestamps", async function () {
+    const beforeTime = Math.floor(Date.now() / 1000);
+
+    // Add entry
+    const encryptedContent = await fhevm
+      .createEncryptedInput(reflectionContractAddress, signers.alice.address)
+      .add64(12345) // Dummy content
+      .encrypt();
+
+    const encryptedStress = await fhevm
+      .createEncryptedInput(reflectionContractAddress, signers.alice.address)
+      .add8(50)
+      .encrypt();
+
+    const encryptedAchievement = await fhevm
+      .createEncryptedInput(reflectionContractAddress, signers.alice.address)
+      .add8(80)
+      .encrypt();
+
+    const encryptedMindset = await fhevm
+      .createEncryptedInput(reflectionContractAddress, signers.alice.address)
+      .addBool(true)
+      .encrypt();
+
+    await reflectionContract
+      .connect(signers.alice)
+      .addReflection(
+        encryptedContent.handles[0],
+        encryptedContent.inputProof,
+        encryptedStress.handles[0],
+        encryptedStress.inputProof,
+        encryptedAchievement.handles[0],
+        encryptedAchievement.inputProof,
+        encryptedMindset.handles[0],
+        encryptedMindset.inputProof
+      );
+
+    const afterTime = Math.floor(Date.now() / 1000);
+
+    // Get the entry and check timestamp is reasonable
+    const entry = await reflectionContract.getEntry(1);
+    expect(entry.timestamp).to.be.at.least(beforeTime);
+    expect(entry.timestamp).to.be.at.most(afterTime + 10); // Allow some buffer
+    expect(entry.exists).to.be.true;
+  });
 });
 

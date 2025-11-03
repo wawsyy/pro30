@@ -9,6 +9,8 @@ A confidential reflection journal built with Zama FHE (Fully Homomorphic Encrypt
 - **Rainbow Wallet Integration**: Easy wallet connection using Rainbow wallet
 - **Beautiful UI**: Modern, clean interface inspired by best practices
 - **On-Chain Storage**: Reflections are stored on the blockchain with encrypted data
+- **Real-time Decryption**: View your encrypted reflections with one-click decryption
+- **User Analytics**: Track your reflection patterns and mindset trends over time
 
 ## Project Structure
 

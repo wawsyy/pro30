@@ -15,6 +15,11 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "target": "es2022"
   },
   "exclude": ["node_modules"],

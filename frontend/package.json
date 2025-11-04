@@ -12,7 +12,10 @@
     "ishhrunning": "node ./scripts/is-hardhat-node-running.mjs",
     "build": "npx next build",
     "start": "npx next start",
-    "lint": "npx next lint"
+    "lint": "npx next lint",
+    "lint:fix": "npx next lint --fix",
+    "type-check": "tsc --noEmit",
+    "analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.0.0",

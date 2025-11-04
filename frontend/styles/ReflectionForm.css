@@ -49,6 +49,18 @@
   border-color: #3b82f6;
 }
 
+.reflection-form-textarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.reflection-form-character-count {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: right;
+  margin-top: 0.25rem;
+}
+
 .reflection-form-textarea:disabled {
   background-color: #f3f4f6;
   cursor: not-allowed;

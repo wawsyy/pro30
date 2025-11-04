@@ -17,6 +17,7 @@ export const useReflectionContract = () => {
 
   const [fheLoading, setFheLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   // Get contract address for current chain
   const contractAddress = useMemo(() => {
@@ -336,6 +337,10 @@ export const useReflectionContract = () => {
     [fhevmInstance, walletClient, contractAddress, address, getEntry]
   );
 
+  const clearError = useCallback(() => {
+    setLastError(null);
+  }, []);
+
   return {
     addReflection,
     getUserEntries,
@@ -348,6 +353,8 @@ export const useReflectionContract = () => {
     fhevmStatus,
     fhevmError,
     fhevmReady: fhevmStatus === "ready" && !!fhevmInstance,
+    lastError,
+    clearError,
   };
 };
 

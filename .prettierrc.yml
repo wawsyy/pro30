@@ -3,6 +3,11 @@ plugins:
 printWidth: 120
 trailingComma: "all"
 endOfLine: "lf"
+semi: true
+singleQuote: false
+quoteProps: "as-needed"
+bracketSpacing: true
+arrowParens: "avoid"
 
 overrides:
   - files: "*.md"

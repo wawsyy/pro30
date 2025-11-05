@@ -35,6 +35,24 @@ After deploying the contract:
 1. Update `frontend/abi/EncryptedNightlyReflectionAddresses.ts` with the deployed addresses
 2. Or run `npm run genabi` in the frontend directory after deployment
 
+### Environment Variables
+
+Create a `.env.local` file in the root directory with:
+```bash
+# Hardhat configuration
+MNEMONIC="your mnemonic here"
+INFURA_API_KEY="your infura api key"
+PRIVATE_KEY="your private key"
+ETHERSCAN_API_KEY="your etherscan api key"
+```
+
+### Testing Setup
+
+For comprehensive testing:
+1. Run `npm run test` for unit tests
+2. Run `npm run test:gas` for gas reporting
+3. Use `npm run test:sepolia` for Sepolia network tests (requires proper configuration)
+
 ## Quick Start
 
 1. Install dependencies:

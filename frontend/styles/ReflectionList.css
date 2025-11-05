@@ -6,11 +6,32 @@
   padding: 1.5rem;
 }
 
+.reflection-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .reflection-list-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 1rem;
+  margin: 0;
+}
+
+.reflection-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reflection-sort-controls select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  background: white;
+  font-size: 0.875rem;
 }
 
 .reflection-entries {

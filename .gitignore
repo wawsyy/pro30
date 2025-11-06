@@ -17,10 +17,15 @@ tmp
 
 # files
 *.env
+*.env.local
+*.env.production
 *.log
 .DS_Store
 .pnp.*
 coverage.json
 pnpm-lock.yaml
 yarn.lock
+*.swp
+*.swo
+*~
 

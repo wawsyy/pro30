@@ -7,7 +7,12 @@
     "max-line-length": ["error", 120],
     "named-parameters-mapping": "warn",
     "no-console": "off",
-    "not-rely-on-time": "off"
+    "not-rely-on-time": "off",
+    "avoid-suicide": "error",
+    "avoid-sha3": "warn",
+    "state-visibility": "warn",
+    "const-name-snakecase": "warn",
+    "event-name-camelcase": "warn"
   }
 }
 

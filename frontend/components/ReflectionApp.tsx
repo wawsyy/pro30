@@ -13,7 +13,7 @@ export const ReflectionApp: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const { isConnected } = useAccount();
-  const { isLoading: contractLoading } = useReflectionContract();
+  const { isLoading: _contractLoading } = useReflectionContract();
 
   useEffect(() => {
     setMounted(true);

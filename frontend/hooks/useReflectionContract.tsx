@@ -1,0 +1,353 @@
+"use client";
+
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useAccount, useChainId, useWalletClient, usePublicClient } from "wagmi";
+import { ethers } from "ethers";
+import { useFhevm } from "@/fhevm/useFhevm";
+import { useInMemoryStorage } from "./useInMemoryStorage";
+import { EncryptedNightlyReflectionAddresses } from "@/abi/EncryptedNightlyReflectionAddresses";
+import { EncryptedNightlyReflectionABI } from "@/abi/EncryptedNightlyReflectionABI";
+
+export const useReflectionContract = () => {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+  const { storage: fhevmDecryptionSignatureStorage } = useInMemoryStorage();
+
+  const [fheLoading, setFheLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Get contract address for current chain
+  const contractAddress = useMemo(() => {
+    if (!chainId) return undefined;
+    return EncryptedNightlyReflectionAddresses[chainId.toString()]?.address;
+  }, [chainId]);
+
+  // Use window.ethereum for FHEVM (it needs Eip1193Provider)
+  const fhevmProvider = useMemo(() => {
+    if (typeof window !== "undefined" && window.ethereum) {
+      return window.ethereum as ethers.Eip1193Provider;
+    }
+    // For hardhat/localhost, use the RPC URL
+    if (chainId === 31337) {
+      return "http://localhost:8545";
+    }
+    return undefined;
+  }, [chainId]);
+
+  // Create ethers provider from public client for contract calls
+  const provider = useMemo(() => {
+    if (!publicClient) return undefined;
+    // Convert viem publicClient to ethers JsonRpcProvider
+    const transport = (publicClient as any).transport;
+    if (transport && transport.url) {
+      return new ethers.JsonRpcProvider(transport.url);
+    }
+    // Fallback: use window.ethereum
+    if (typeof window !== "undefined" && window.ethereum) {
+      return new ethers.BrowserProvider(window.ethereum);
+    }
+    return undefined;
+  }, [publicClient]);
+
+  // Initialize FHEVM instance - only when wallet is connected and provider is available
+  const shouldEnableFhevm = isConnected && !!fhevmProvider && !!chainId;
+  const { instance: fhevmInstance, status: fhevmStatus, error: fhevmError } = useFhevm({
+    provider: fhevmProvider,
+    chainId,
+    enabled: shouldEnableFhevm,
+    initialMockChains: { 31337: "http://localhost:8545" },
+  });
+
+  const addReflection = useCallback(
+    async (
+      content: string,
+      stressLevel: number,
+      achievementLevel: number,
+      mindsetPositive: boolean
+    ) => {
+      if (!fhevmInstance || fhevmStatus !== "ready") {
+        throw new Error("FHEVM instance not ready. Status: " + fhevmStatus);
+      }
+      if (!walletClient || !contractAddress || !address) {
+        throw new Error("Wallet, contract, or address not available");
+      }
+
+      setFheLoading(true);
+      setIsLoading(true);
+
+      try {
+        // Helper function to encrypt with retry logic
+        const encryptWithRetry = async (
+          value: number,
+          fieldName: string,
+          maxRetries: number = 3
+        ) => {
+          let retryCount = 0;
+          let lastError: Error | null = null;
+
+          while (retryCount < maxRetries) {
+            try {
+              console.log(`[useReflectionContract] Encrypting ${fieldName} (attempt ${retryCount + 1}/${maxRetries})...`);
+              const input = fhevmInstance.createEncryptedInput(contractAddress, address);
+              input.add32(value);
+              const encrypted = await input.encrypt();
+              console.log(`[useReflectionContract] ${fieldName} encryption successful`);
+              return encrypted;
+            } catch (encryptError: any) {
+              retryCount++;
+              lastError = encryptError;
+              const errorMessage = encryptError?.message || String(encryptError);
+              console.warn(`[useReflectionContract] ${fieldName} encryption attempt ${retryCount} failed:`, errorMessage);
+
+              if (retryCount >= maxRetries) {
+                throw new Error(
+                  `Failed to encrypt ${fieldName} after ${maxRetries} attempts. ` +
+                  `Last error: ${errorMessage}. ` +
+                  `This may be due to FHEVM Relayer service issues. Please try again later.`
+                );
+              }
+
+              // Exponential backoff: 2s, 4s, 8s
+              const waitTime = Math.pow(2, retryCount) * 1000;
+              console.log(`[useReflectionContract] Waiting ${waitTime / 1000}s before retry...`);
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+            }
+          }
+
+          throw lastError || new Error(`Failed to encrypt ${fieldName}`);
+        };
+
+        // Content is stored as plaintext, only encrypt the numeric fields
+        // Encrypt stress level (ensure value is within uint32 range)
+        const stressValue = Math.max(0, Math.min(100, Math.floor(stressLevel)));
+        const encryptedStressLevel = await encryptWithRetry(stressValue, "stress level");
+
+        // Encrypt achievement level (ensure value is within uint32 range)
+        const achievementValue = Math.max(0, Math.min(100, Math.floor(achievementLevel)));
+        const encryptedAchievementLevel = await encryptWithRetry(achievementValue, "achievement level");
+
+        // Encrypt mindset (as uint32: 0=false, 1=true)
+        const mindsetValue = mindsetPositive ? 1 : 0;
+        const encryptedMindsetPositive = await encryptWithRetry(mindsetValue, "mindset");
+
+        setFheLoading(false);
+
+        // Create contract instance using walletClient
+        if (!walletClient) throw new Error("Wallet client not available");
+        
+        // Use viem's walletClient to send transaction
+        const { createWalletClient, http } = await import("viem");
+        const { privateKeyToAccount } = await import("viem/accounts");
+        
+        // For now, use window.ethereum directly
+        if (typeof window === "undefined" || !window.ethereum) {
+          throw new Error("Ethereum provider not available");
+        }
+        
+        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await ethersProvider.getSigner();
+
+        const contract = new ethers.Contract(
+          contractAddress,
+          EncryptedNightlyReflectionABI.abi,
+          signer
+        );
+
+        // Call addReflection - note: contract expects content as string, not encrypted
+        const tx = await contract.addReflection(
+          content, // Plaintext content (as per updated contract)
+          encryptedStressLevel.handles[0],
+          encryptedStressLevel.inputProof,
+          encryptedAchievementLevel.handles[0],
+          encryptedAchievementLevel.inputProof,
+          encryptedMindsetPositive.handles[0],
+          encryptedMindsetPositive.inputProof
+        );
+
+        const receipt = await tx.wait();
+        console.log("[useReflectionContract] Transaction confirmed:", receipt?.hash);
+        // Wait a bit more for the state to be updated on-chain
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } finally {
+        setFheLoading(false);
+        setIsLoading(false);
+      }
+    },
+    [fhevmInstance, walletClient, contractAddress, address, provider]
+  );
+
+  const getUserEntries = useCallback(async (): Promise<bigint[]> => {
+    if (!provider || !contractAddress || !address) {
+      return [];
+    }
+
+    try {
+      const contract = new ethers.Contract(
+        contractAddress,
+        EncryptedNightlyReflectionABI.abi,
+        provider
+      );
+
+      const entryIds = await contract.getUserEntries(address);
+      return entryIds;
+    } catch (error: any) {
+      // Only log real errors, ignore network errors from external services
+      const errorMsg = error?.message?.toLowerCase() || String(error).toLowerCase();
+      if (!errorMsg.includes("failed to fetch") && !errorMsg.includes("network")) {
+        console.error("Error getting user entries:", error);
+      }
+      return [];
+    }
+  }, [provider, contractAddress, address]);
+
+  const getEntry = useCallback(
+    async (entryId: number) => {
+      if (!provider || !contractAddress) {
+        throw new Error("Provider or contract not available");
+      }
+
+      const contract = new ethers.Contract(
+        contractAddress,
+        EncryptedNightlyReflectionABI.abi,
+        provider
+      );
+
+      const entry = await contract.getEntry(entryId);
+      return entry;
+    },
+    [provider, contractAddress]
+  );
+
+  const decryptEntry = useCallback(
+    async (entryId: number) => {
+      if (!fhevmInstance || !walletClient || !contractAddress || !address) {
+        throw new Error("FHEVM instance, wallet, or contract not available");
+      }
+
+      setIsLoading(true);
+
+      try {
+        // Get entry data
+        const entry = await getEntry(entryId);
+        
+        // Content is stored as plaintext string
+        const content = entry.content;
+        
+        // Decrypt encrypted fields
+        const encryptedStressLevelHandle = entry.encryptedStressLevel;
+        const encryptedAchievementLevelHandle = entry.encryptedAchievementLevel;
+        const encryptedMindsetHandle = entry.encryptedMindsetPositive;
+
+        // Use FHEVM to decrypt - always sign fresh (don't use cache to ensure wallet popup)
+        // Generate new keypair for this decryption
+        const { publicKey, privateKey } = fhevmInstance.generateKeypair();
+        
+        // Create EIP712 data
+        const startTimestamp = Math.floor(Date.now() / 1000);
+        const durationDays = 365;
+        const eip712 = fhevmInstance.createEIP712(
+          publicKey,
+          [contractAddress],
+          startTimestamp,
+          durationDays
+        );
+        
+        // Sign with wallet (this will trigger wallet popup)
+        console.log("[useReflectionContract] Requesting wallet signature for decryption...");
+        let signature: string;
+        
+        // Use wagmi walletClient for signing (this will trigger Rainbow wallet popup)
+        if (!walletClient) {
+          throw new Error("Wallet client not available for signing");
+        }
+        
+        try {
+          signature = await walletClient.signTypedData({
+            account: address as `0x${string}`,
+            domain: eip712.domain as any,
+            types: { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification } as any,
+            primaryType: 'UserDecryptRequestVerification',
+            message: eip712.message as any,
+          });
+          console.log("[useReflectionContract] Signature received from walletClient");
+        } catch (error) {
+          console.error("[useReflectionContract] walletClient.signTypedData failed:", error);
+          // Fallback to ethers signer if walletClient fails
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum!);
+          const signer = await ethersProvider.getSigner();
+          signature = await signer.signTypedData(
+            eip712.domain,
+            { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
+            eip712.message
+          );
+        }
+        
+        console.log("[useReflectionContract] Signature obtained, proceeding with decryption...");
+
+        // Decrypt stress level
+        const stressLevelResult = await fhevmInstance.userDecrypt(
+          [{ handle: encryptedStressLevelHandle, contractAddress }],
+          privateKey,
+          publicKey,
+          signature,
+          [contractAddress],
+          address as `0x${string}`,
+          startTimestamp,
+          durationDays
+        );
+
+        // Decrypt achievement level
+        const achievementLevelResult = await fhevmInstance.userDecrypt(
+          [{ handle: encryptedAchievementLevelHandle, contractAddress }],
+          privateKey,
+          publicKey,
+          signature,
+          [contractAddress],
+          address as `0x${string}`,
+          startTimestamp,
+          durationDays
+        );
+
+        // Decrypt mindset
+        const mindsetResult = await fhevmInstance.userDecrypt(
+          [{ handle: encryptedMindsetHandle, contractAddress }],
+          privateKey,
+          publicKey,
+          signature,
+          [contractAddress],
+          address as `0x${string}`,
+          startTimestamp,
+          durationDays
+        );
+
+        return {
+          content: content,
+          stressLevel: Number(stressLevelResult[encryptedStressLevelHandle]),
+          achievementLevel: Number(achievementLevelResult[encryptedAchievementLevelHandle]),
+          mindsetPositive: Boolean(mindsetResult[encryptedMindsetHandle]),
+          timestamp: Number(entry.timestamp),
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fhevmInstance, walletClient, contractAddress, address, getEntry]
+  );
+
+  return {
+    addReflection,
+    getUserEntries,
+    getEntry,
+    decryptEntry,
+    fheLoading,
+    isLoading,
+    contractAddress,
+    isDeployed: !!contractAddress && contractAddress !== ethers.ZeroAddress,
+    fhevmStatus,
+    fhevmError,
+    fhevmReady: fhevmStatus === "ready" && !!fhevmInstance,
+  };
+};
+

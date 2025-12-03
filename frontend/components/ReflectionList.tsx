@@ -21,7 +21,7 @@ interface ReflectionListProps {
 
 export const ReflectionList: React.FC<ReflectionListProps> = ({ refreshTrigger = 0 }) => {
   const { address } = useAccount();
-  const { getUserEntries, getEntry, decryptEntry, isLoading } = useReflectionContract();
+  const { getUserEntries, decryptEntry, isLoading } = useReflectionContract();
   const [entries, setEntries] = useState<ReflectionEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [decryptingId, setDecryptingId] = useState<number | null>(null);
@@ -112,7 +112,7 @@ export const ReflectionList: React.FC<ReflectionListProps> = ({ refreshTrigger =
 
   useEffect(() => {
     console.log("[ReflectionList] useEffect triggered, address:", address, "refreshTrigger:", refreshTrigger);
-    loadEntries();
+    void loadEntries();
   }, [address, refreshTrigger, loadEntries]);
 
   if (loading) {

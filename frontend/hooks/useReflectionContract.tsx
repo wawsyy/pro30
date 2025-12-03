@@ -22,7 +22,8 @@ export const useReflectionContract = () => {
   // Get contract address for current chain
   const contractAddress = useMemo(() => {
     if (!chainId) return undefined;
-    return EncryptedNightlyReflectionAddresses[chainId.toString()]?.address;
+    const addresses = EncryptedNightlyReflectionAddresses as Record<string, { address: string; chainId: number; chainName: string }>;
+    return addresses[chainId.toString()]?.address;
   }, [chainId]);
 
   // Use window.ethereum for FHEVM (it needs Eip1193Provider)

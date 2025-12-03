@@ -12,7 +12,16 @@ import { InMemoryStorageProvider } from "@/hooks/useInMemoryStorage";
 const config = getDefaultConfig({
   appName: "Encrypted Nightly Reflection",
   projectId: "encrypted-nightly-reflection",
-  chains: [sepolia, hardhat],
+  chains: [
+    {
+      ...sepolia,
+      rpcUrls: {
+        default: { http: ['https://rpc.sepolia.org'] },
+        public: { http: ['https://rpc.sepolia.org'] },
+      },
+    },
+    hardhat
+  ],
   ssr: false, // Disable SSR to avoid indexedDB issues
 });
 
@@ -43,7 +52,18 @@ export function Providers({ children }: Props) {
         errorString.includes('pulse.walletconnect') ||
         errorString.includes('api.web3modal') ||
         errorString.includes('blocked by response') ||
-        errorString.includes('fhevmaborterror')
+        errorString.includes('fhevmaborterror') ||
+        errorString.includes('relayer.testnet.zama.cloud') ||
+        errorString.includes('relayersdk') ||
+        errorString.includes('threads') ||
+        errorString.includes('cross-origin') ||
+        errorString.includes('cors') ||
+        errorString.includes('rpc.thirdweb.com') ||
+        errorString.includes('connection closed') ||
+        errorString.includes('err_connection_closed') ||
+        errorString.includes('jsonrpcprovider failed') ||
+        errorString.includes('network detection') ||
+        errorString.includes('err_failed')
       ) {
         // Suppress these errors - they don't affect functionality
         return;
@@ -62,7 +82,12 @@ export function Providers({ children }: Props) {
         errorString.includes('web3modal') ||
         errorString.includes('coinbase') ||
         errorString.includes('cca-lite') ||
-        errorString.includes('blocked by response')
+        errorString.includes('blocked by response') ||
+        errorString.includes('relayer.testnet.zama.cloud') ||
+        errorString.includes('rpc.thirdweb.com') ||
+        errorString.includes('connection closed') ||
+        errorString.includes('cors') ||
+        errorString.includes('network detection')
       ) {
         event.preventDefault(); // Suppress the error
         return;

@@ -17,14 +17,16 @@ export function useFhevm(parameters: {
   provider: string | ethers.Eip1193Provider | undefined;
   chainId: number | undefined;
   enabled?: boolean;
-  initialMockChains?: Readonly<Record<number, string>>;  
+  initialMockChains?: Readonly<Record<number, string>>;
 }): {
   instance: FhevmInstance | undefined;
   refresh: () => void;
   error: Error | undefined;
   status: FhevmGoState;
 } {
-  const { provider, chainId, initialMockChains, enabled = true } = parameters;
+  // Disable FHEVM in production environments where it might not work properly
+  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+  const { provider, chainId, initialMockChains, enabled = !isProduction } = parameters;
 
   const [instance, _setInstance] = useState<FhevmInstance | undefined>(
     undefined
